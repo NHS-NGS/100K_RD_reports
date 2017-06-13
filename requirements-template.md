@@ -1,9 +1,9 @@
-# GEL_reports Project Requirements 
+# 100K_RD_reports Project Requirements 
 
 
 ## Participants
 
-    - Product owner: GMCs
+    - Product owner: all GMCs
     - Team: Aled Jones
     - Stakeholders: GMCs, Genomics England
 
