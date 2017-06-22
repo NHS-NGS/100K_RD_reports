@@ -1,5 +1,5 @@
 ####################### Where the App lives##############
-app_home=""/home/mokaguys/Apps/CIP_API/"
+app_home="/home/mokaguys/Apps/CIP_API/"
 
 ####################### Authentication ##################
 # path to files containing
