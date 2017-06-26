@@ -29,7 +29,7 @@ class connect():
 		self.token=APIAuthentication().get_token()
 	
 		# The link to the first page of the CIP API results
-		self.interpretationlist="https://cipapi.genomicsengland.nhs.uk/api/interpretationRequestsList/?format=json&page_size=100000"
+		self.interpretationlist="https://cipapi.genomicsengland.nhs.uk/api/interpretationRequestsList/?format=json"
 		
 		# The probandID to return the report for
 		self.proband_id=""
@@ -68,12 +68,16 @@ class connect():
 		#variables which identify columns in the table which need changing
 		self.replace_with_proband_id="Link to clinical summary"
 		self.proband_id_string="GeL Proband ID"
+		
+		# a flag to determine if the report should be modified or not.
+		self.negative_negative=""
 	
 	def take_inputs(self, argv):	
 		'''Capture the gel participant ID from the command line'''
+		
 		# define expected inputs
 		try:
-			opts, args = getopt.getopt(argv, "g:")
+			opts, args = getopt.getopt(argv, "g:h:",['gelid','removeheader'])
 		# raise errors with usage eg
 		except getopt.GetoptError:
 			print "ERROR - correct usage is", self.usage
@@ -81,9 +85,13 @@ class connect():
 		
 		# loop through the arguments 
 		for opt, arg in opts:
-			if opt in ("-g"):
+			if opt in ("-g","--gelid"):
 				# capture the proband ID
 				self.proband_id = str(arg)
+			
+			if opt in ("-h","--removeheader"):
+				# If this flag is given don't touch the report header.
+				self.negative_negative=str(arg)
 				
 		if self.proband_id:
 			#build paths to reports
@@ -106,7 +114,7 @@ class connect():
 		
 			
 	def parse_json(self,json):
-		'''This function takes the json file containing all cases. This is parsed to look for the desired proband id'''
+		'''This function takes the json file containing 100 cases. This is parsed to look for the desired proband id. If it is not found on this page the url for the next page is captured and read_API_page function is called'''
 		# Flag to stop the search
 		found=False
 		
@@ -150,112 +158,128 @@ class connect():
 
 							# create an beautiful soup object for the html clinical report
 							soup=BeautifulSoup(report.content,"html.parser")
+							
+							#check for errors first
+							soup=self.check_for_errors(soup)
+							
+							# If a negative negative result the lab has not done any interpretation so should not be issuing a lab report so should only modify reports which the lab has interpreted/confirmed!
+							if self.negative_negative=="False":
+								#pass the object to the replace_gel_address function and update the object
+								soup=self.replace_gel_address(soup)
 
-							#pass the object to the replace_gel_address function and update the object
-							soup=self.replace_gel_address(soup)
-
-							#read and remove the over header (grey bar with proband id and date generated)
-							soup=self.remove_over_header(soup)
+								#read and remove the over header (grey bar with proband id and date generated)
+								soup=self.remove_over_header(soup)
+																
+								#pass to function to remove the banner text
+								soup=self.remove_banner_text(soup)
+								
+								#pass to function to put things from the over header into a different table
+								soup=self.move_date_report_generated(soup)
+								
+								#stop the annex tables being split over pages
+								soup=self.stop_annex_tables_splitting_over_page(soup)
 							
 							#pass to function to replace the GeL logo with that of the lab (and or UKAS)
 							soup=self.replace_GeL_logo(soup)
 							
-							#pass to function to remove the banner text
-							soup=self.remove_banner_text(soup)
-							
-							#pass to function to put things from the over header into a different table
-							soup=self.move_date_report_generated(soup)
-
 							# pass to function to expand coverage
 							soup=self.expand_coverage(soup)
-							
-							#stop the annex tables being split over pages
-							soup=self.stop_annex_tables_splitting_over_page(soup)
-							
+														
 							#write html to file so can be read in edit_CSS function
 							with open(self.html_report, "w") as file:
 								file.write(str(soup))
-							
+
 							#Can't change CSS or insert tables using beautiful soup so need to read and replace html file
 							self.edit_CSS()
 							
+							## Call function to pull out patient demographics from LIMS. capture dict
+							patient_info_dict=self.read_lims()
+							
+							#pass modified file to create a pdf.
+							self.create_pdf(self.pdf_report,patient_info_dict)
+							
+
 		# if proband not found 
 		if not found:
-			# print statement to say not found
-			print "Record not found in the "+str(self.count) + " GeL records parsed"
-			# assert that the number of GEL record parsed == the sample count provided in the JSON
-			assert self.count == json['count'], "self.count != gel's count"
+			# get url for next page. check it's not the last page
+			if json['next']:
+				# update the self.interpretationlist with url for next page
+				self.interpretationlist=json['next']
+				# Call the function to read the API
+				self.read_API_page()
+			else:
+				# print statement to say not found
+				print "Record not found in the "+str(self.count) + " GeL records parsed"
+				# assert that the number of GEL record parsed == the sample count provided in the JSON
+				assert self.count == json['count'], "self.count != gel's count"
 		
 	def edit_CSS(self):
 		'''Can't change CSS or insert tables using beautiful soup so need to read and replace html file.
 		This function reads that file, loops through it and 
-		1 - edits the CSS which defines the banner colour
-		2 - 
+		1 - Adds in a table containing patient information extracted from LIMS
+		
+		for reports that are being modified to look like they are not from gel:
+			2 - edits the CSS which defines the banner colour so it is transparent
+			3 - Adds the date report generated to the table (was previously in the grey header)
+			4 - Adds in table with clinician referral information
+			
 		'''
 		# read file into object (a list) 
 		with open(self.html_report, "r") as file:
 			data=file.readlines()
-		
-		#loop through the file object
-		for i, line in enumerate(data):
-			
-			## Replace the banner CSS
-			# if line contains the existing banner css (from __init__)
-			if self.existing_banner_css in line:
-				# replace that line in the file object so it's now transparent background
-				data[i]=line.replace(self.existing_banner_css,self.new_banner_css)
-
-			## Add in the new patient info table
-			# if the line is where we want to add in this table (defined in __init__)
-			if self.where_to_put_patient_info_table in line:
-				# open the html template
-				with open(new_patientinfo_table,"r") as template:
-					#write template to a list
-					template_to_write=template.readlines()
-				# Add in this template at this position NB this will over write the line so this line is also in the template
-				data[i]="".join(template_to_write)
-			
-			## Add extra row to the table with the date report generated
-			# if the last row of the table (as stated in the function move_date_report_generated)
-			if self.lastrow in line:
-				# create empty list
-				template_to_write=[]
-				# write the table code to the list
-				template_to_write.append("<tr><td>Date Report Generated:</td><td><em>"+self.date_generated+"</em></td></tr>")
-				# append the last row as below we are overwriting the existing line
-				template_to_write.append(self.lastrow)
-				# Add this list to the file object
-				data[i]="".join(template_to_write)
-			
-			## Add in the clinician and address
-			# look for desired location
-			if self.where_to_put_clinician_info in line:
-				#empty list
-				template_to_write=[]
-				#add new div
-				template_to_write.append("<div>")
-				# add line which is going to be replaced
-				template_to_write.append(self.where_to_put_clinician_info)
+			#loop through the file object
+			for i, line in enumerate(data):
+				## Add in the new patient info table
+				# if the line is where we want to add in this table (defined in __init__)
+				if self.where_to_put_patient_info_table in line:
+					# open the html template
+					with open(new_patientinfo_table,"r") as template:
+						#write template to a list
+						template_to_write=template.readlines()
+						# Add in this template at this position NB this will over write the line so this line is also in the template
+						data[i]="".join(template_to_write)
 				
-				# open html template containing the clinician info structure (and a new header)
-				with open(new_clinician_table,"r") as template:
-					# add this file to the list
-					for line in template.readlines():
-						template_to_write.append(line)
+				# if it's a report which is to be modified
+				if self.negative_negative=="False":
+					## Replace the banner CSS
+					# if line contains the existing banner css (from __init__)
+					if self.existing_banner_css in line:
+						# replace that line in the file object so it's now transparent background
+						data[i]=line.replace(self.existing_banner_css,self.new_banner_css)
 				
-				#write the list back to the file object
-				data[i]="".join(template_to_write)
-				
-													
-		#write the modified list back to a file
-		with open(self.html_report, "w") as file:
-			file.writelines(data)
+					## Add extra row to the table with the date report generated
+					# if the last row of the table (as stated in the function move_date_report_generated)
+					if self.lastrow in line:
+						# create empty list
+						template_to_write=[]
+						# write the table code to the list
+						template_to_write.append("<tr><td>Date Report Generated:</td><td><em>"+self.date_generated+"</em></td></tr>")
+						# append the last row as below we are overwriting the existing line
+						template_to_write.append(self.lastrow)
+						# Add this list to the file object
+						data[i]="".join(template_to_write)
+					
+					## Add in the clinician and address
+					# look for desired location
+					if self.where_to_put_clinician_info in line:
+						#empty list
+						template_to_write=[]
+						#add new div
+						template_to_write.append("<div>")
+						# add line which is going to be replaced
+						template_to_write.append(self.where_to_put_clinician_info)
 						
-		## Call function to pull out patient demographics from LIMS
-		self.read_lims()
-			
-			
-
+						# open html template containing the clinician info structure (and a new header)
+						with open(new_clinician_table,"r") as template:
+							# add this file to the list
+							for line in template.readlines():
+								template_to_write.append(line)
+						data[i]="".join(template_to_write)
+											
+			#write the modified list back to a file
+			with open(self.html_report, "w") as file:
+				file.writelines(data)
+		
 	def read_lims(self):
 		'''This function must create a dictionary which is used to populate the html variables 
 		eg patient_info_dict={"NHS":NHS,"PRU":PRU,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
@@ -263,13 +287,32 @@ class connect():
 		
 		####
 		# Put lab specific function to populate below dict here
-		####		
+		###
+		if find patient:
 		
-		patient_info_dict={"NHS":NHS,"PRU":PRU,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
-		#pass modified file to create a pdf.
-		self.create_pdf(self.pdf_report,patient_info_dict)
-			
+			patient_info_dict={"NHS":NHS,"PRU":PRU,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
+				
+			return (patient_info_dict)
+		else:
+			print "No Patient information for the proband "+str(self.proband_id)+"\ncannot create report"
+			quit()
 	
+	def check_for_errors(self,html):
+		'''issue warning (or abort) if any errors are found when reporting eg can't find coverage report etc. Uses a warning message from config file'''
+		# look for presence of an warning message
+		for div in html.find_all('div', {'class':'content-div error-panel'}):
+			# if there is an error
+			if div:
+				# capture and print the error message
+				for message in div.find_all('p'):
+					print warning_message + message.get_text()
+				
+				#if required stop the report being generated
+				#quit()
+		
+		# return html
+		return html
+			
 	def replace_gel_address(self,html):
 		'''This function looks for and removes the GeL address '''
 		# notes is a list of all the p tags where the class == note
@@ -282,7 +325,7 @@ class connect():
 		return html
 	
 	def move_date_report_generated(self,html):
-		'''This function looks for the table underneath the GEl address and above participant info and puts in the information from the over_header'''
+		'''This function looks for the table underneath the GEL address and above participant info and puts in the information from the over_header'''
 		#loop through the tables - the table we are after is the only one with class=form-table and cellpadding=0
 		for table in html.find_all('table', {'class':'form-table', 'cellpadding':'0'}):
 			# find all rows in the table
@@ -352,21 +395,25 @@ class connect():
 		
 	def replace_GeL_logo(self,html):
 		'''This function replaces gel logo with a new logo'''
-		# find the img tag where class == logo (should only be one)
-		for img in html.find_all('img', {'class':"logo"}):
-			# change the src to link to new image
-			img['src']=new_logo
-			#change the style so is on right hand side and has a small margin
-			img['style']="float:right; margin: 2%;"
-			
-			# capture this tag so we can use it to place the clinicians name and address
-			self.where_to_put_clinician_info=str(img)
+		if self.negative_negative=="False":
+			# find the img tag where class == logo (should only be one)
+			for img in html.find_all('img', {'class':"logo"}):
+				# change the src to link to new image
+				img['src']=new_logo
+				#change the style so is on right hand side and has a small margin
+				img['style']="float:right; margin: 2%;"
 				
+				# capture this tag so we can use it to place the clinicians name and address
+				self.where_to_put_clinician_info=str(img)
+		else:
+			# find the img tag where class == logo (should only be one)
+			for img in html.find_all('img', {'class':"logo"}):
+				# Need to ensure the image doesn't shrink
+				img['style']="height:100px;"
+		
+		# return the modified html
 		return html
 	
-
-
-
 	def expand_coverage(self,html):
 		'''Expand the coverage section'''
 		# find the coverage div and delete so coverage seciton no longer needs to be clicked to be visible
@@ -394,7 +441,6 @@ class connect():
 		pdfkitconfig = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
 		# create options to use in the footer
 		options={'footer-right':'Page [page] of [toPage]','footer-left':'Date Created [isodate]','quiet':""}
-		
 		# use Jinja to populate the variables within the html template
 		# first tell the system where to find the html template (this is written by beautiful soup above)
 		env = Environment(loader=FileSystemLoader(html_reports))
@@ -402,8 +448,10 @@ class connect():
 		# create the pdf using template.render to populate variables from dictionary created in read_geneworks
 		pdfkit.from_string(template.render(patient_info), pdfreport_path, options=options, configuration=pdfkitconfig)
 		
+		# print 
+		print "done\nReport can be found at "+self.pdf_report
+		
 	def fetchone(self, query):
-		'''module to execute pyodbc connection. simply pass a sql query to this function and the qry result returned as an object. This function returns a single result'''
 		# Connection
 		cnxn = pyodbc.connect(dbconnectstring)
 		# Opening a cursor
@@ -422,7 +470,6 @@ class connect():
 			print "no result found"
 	
 	def fetchall(self, query):
-		'''module to execute pyodbc connection. simply pass a sql query to this function and the qry result returned as an object. This function returns all results'''
 		# Connection
 		cnxn = pyodbc.connect(dbconnectstring)
 		# Opening a cursor
