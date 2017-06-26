@@ -70,7 +70,7 @@ class connect():
 		self.proband_id_string="GeL Proband ID"
 		
 		# a flag to determine if the report should be modified or not.
-		self.negative_negative=""
+		self.remove_headers=""
 	
 	def take_inputs(self, argv):	
 		'''Capture the gel participant ID from the command line'''
@@ -91,7 +91,7 @@ class connect():
 			
 			if opt in ("-h","--removeheader"):
 				# If this flag is given don't touch the report header.
-				self.negative_negative=str(arg)
+				self.remove_headers=str(arg)
 				
 		if self.proband_id:
 			#build paths to reports
@@ -163,7 +163,7 @@ class connect():
 							soup=self.check_for_errors(soup)
 							
 							# If a negative negative result the lab has not done any interpretation so should not be issuing a lab report so should only modify reports which the lab has interpreted/confirmed!
-							if self.negative_negative=="False":
+							if self.remove_headers=="True":
 								#pass the object to the replace_gel_address function and update the object
 								soup=self.replace_gel_address(soup)
 
@@ -240,7 +240,7 @@ class connect():
 						data[i]="".join(template_to_write)
 				
 				# if it's a report which is to be modified
-				if self.negative_negative=="False":
+				if self.remove_headers=="True":
 					## Replace the banner CSS
 					# if line contains the existing banner css (from __init__)
 					if self.existing_banner_css in line:
@@ -395,7 +395,7 @@ class connect():
 		
 	def replace_GeL_logo(self,html):
 		'''This function replaces gel logo with a new logo'''
-		if self.negative_negative=="False":
+		if self.remove_headers=="True":
 			# find the img tag where class == logo (should only be one)
 			for img in html.find_all('img', {'class':"logo"}):
 				# change the src to link to new image
