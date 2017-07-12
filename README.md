@@ -93,6 +93,7 @@ Further dependancies were required:
 
 ## Usage
 -g, --gelid: 	GEL participantID eg 12345678
+
 -h, --removeheader: 	If the report headers should be removed to look like the lab is issuing the report (True). False does not alter the header, but does include the patient information table.
 
 	python get_report.py -g 12345678 -h True
