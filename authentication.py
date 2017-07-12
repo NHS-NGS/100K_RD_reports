@@ -18,10 +18,10 @@ class APIAuthentication:
 		
 
     def get_token(self):
-		# read username from file
+		# read username from file (username is defined in gel_report_config)
 		with open(username,'r') as f:
 			user=f.readline()
-		#read password from file
+		#read password from file (pw is defined in gel_report_config)
 		with open(pw,'r') as f:
 			password=f.readline()
 		# use requests module to submit the credentials and return the token
