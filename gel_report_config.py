@@ -22,7 +22,7 @@ new_logo = app_home + "images/viapathlogo_white.png"
 report_title = "100,000 Genomes Project Rare Disease Primary Findings"
 
 # warning message if there is an error reported when generating the report
-warning_message = "Warning! Error making the report. If issue continues for this sample contact GEL Helpdesk @ ssd.servicedesk@nhs.net. Error message = "
+warning_message = "Warning! Error making the report.\nIf issue continues for this sample contact GEL Helpdesk @ ssd.servicedesk@nhs.net.\nError message = "
 
 ########################### pdfkit ##########################
 # path to the wkhtmltopdf executable

@@ -43,9 +43,9 @@ For reports that are issued by the lab:
 
 
 #### Adding patient information from local LIMS system
-This table is then populated by a function which queries the LIMS system. This will need to be adapted by each lab locally.
+This table is then populated by a function which queries the LIMS system. This will need to be created locally by each lab.
 
-pyODBC can be used to connect and query SQL databases. functions which query the database and returns the result have been included in the script (with usage instructions).
+pyODBC can be used to connect and query SQL databases. Functions which query the database and returns the result have been included in the script (with usage instructions).
 
 The database connection details are stored separately and imported to the script to enable the script to be stored openly in github. 
 
@@ -77,7 +77,7 @@ The following Python packages are required:
 #### wkhtmltopdf
 This is the software used by pdfkit to convert html to pdf.
 
-It can be installed via apt-get **HOWEVER THIS VERSION CANNOT RUN IN HEADLESS MODE**  - This may however be a useful exercise to install dependancies!
+It can be installed via apt-get **HOWEVER THIS VERSION (v9.9) CANNOT RUN IN HEADLESS MODE**  - This may be a useful exercise to install dependancies, however as described below I still had to download some dependancies!
 
 	sudo apt-get install wkhtmltopdf
 	
@@ -95,6 +95,7 @@ Further dependancies were required:
 
 ## Usage
 -g, --gelid: 	GEL participantID eg 12345678
+
 -h, --removeheader: 	If the report headers should be removed to look like the lab is issuing the report (True). False does not alter the header, but does include the patient information table.
 
 	python get_report.py -g 12345678 -h True

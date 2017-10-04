@@ -7,7 +7,6 @@ This report is then modified to make it clear that this report has not been issu
 Hopefully this solves a problem faced by many labs and prevents too much duplication of work!
 Created 02/06/2017 by Aled Jones
 '''
-#from HTMLParser import HTMLParser
 import requests
 from bs4 import BeautifulSoup
 import pdfkit
@@ -72,7 +71,7 @@ class connect():
 		self.replace_with_proband_id="Link to clinical summary"
 		self.proband_id_string="GeL Proband ID"
 		
-		# a flag to determine if the 
+		# a flag to determine if the header is required to be changed to look like a report from the lab (as opposed to keeping the Gel geader to make it clear it's a GEL report).
 		self.remove_headers=""
 	
 	def take_inputs(self, argv):	
@@ -125,6 +124,7 @@ class connect():
 			# increase the count of patients searched
 			self.count += 1
 			# look for the desired proband id
+
 			
 			# if sample is blocked ignore
 			if sample["last_status"]=="blocked":
@@ -132,6 +132,7 @@ class connect():
 			else:
 				# else look if it's our proband
 				if sample["proband"]==self.proband_id:
+				
 					# set flag to stop the search
 					found=True
 										
@@ -280,11 +281,12 @@ class connect():
 				
 				# otherwise add in clinician info for less heavily modified reports
 				else:		
+					## Add in the clinician and address
 					# look for desired location
 					if self.gel_logo_code in line:
 						#empty list
 						template_to_write=[]
-						# add line which is to be replaced (to ensure it's not lost)
+						# add line which is going to be replaced
 						template_to_write.append(self.gel_logo_code)
 						# open html template containing the clinician info structure (and a new header)
 						with open(new_clinician_table,"r") as template:
@@ -300,20 +302,20 @@ class connect():
 		
 	def read_lims(self):
 		'''This function must create a dictionary which is used to populate the html variables 
-		eg patient_info_dict={"NHS":NHS,"PRU":PRU,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
+		eg patient_info_dict={"NHS":NHS,"InternalPatientID":InternalPatientID,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
 		NB report_title is from the config file'''
 		
 		#if find patient:
 			
 			# complete the dictionary
 		
-			patient_info_dict={"NHS":NHS,"PRU":PRU,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
+			patient_info_dict={"NHS":NHS,"InternalPatientID":InternalPatientID,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
 			
 			#return the dictionary
 			return (patient_info_dict)
 		else:
 			# report error and quit if can't find all the required info (or if it doesn't meet required formats)
-			print "No Patient information for that proband in geneworks\ncannot create report"
+			print "No Patient information for that proband in database\ncannot create report"
 			quit()
 	
 	def check_for_errors(self,html):
