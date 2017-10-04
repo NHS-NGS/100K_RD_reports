@@ -18,8 +18,10 @@ The script authentication.py creates an JSON web token (JWT) using the username 
 
 Each file should just contain a single line containing only the username or password.
 #### Reading the API
-Using the Python requests module and the access token generated above the CIP-API is read, returning all patients that your token allows you to access.
+Using the Python requests module and the access token generated above the CIP-API interpretationrequestlist endpoint is read, returning all patients that your token allows you to access.
 #### Selecting which report to return
+Each Interpretation Request is assessed. However there may be multiple interpretation requests per proband. Additional interpretation requests may arise from the repetition of a sample which failed QC or use of multiple CIPs.
+**The current assumption is that there is only one unblocked Interpretation Request.**
 Once the Participant ID is found a few checks are performed to ensure the correct report is found.
 1. **If the patient status is blocked no report will be returned**
 2. Reports can be generated from multiple versions of the CIP version. **The report from the most recent version CIP version is taken**
@@ -49,7 +51,7 @@ The database connection details are stored separately and imported to the script
 
 An example database connection string (that works with pyODBC) can be found in the file database_connection_config.py. 
 
-This function must essentially populate a dictionary containing one entry for each item in the patient_info_table_template.html eg patient_info_dict={"NHS":NHS,"PRU":PRU,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
+This function must essentially populate a dictionary containing one entry for each item in the patient_info_table_template.html eg patient_info_dict={"NHS":NHS,"InternalPatientID":InternalPatientID,"dob":DOB,"firstname":FName,"lastname":LName,"gender":Gender,"clinician":clinician,"clinician_add":clinic_address,"report_title":report_title}
 
 These templates (and dictionary) can be modified as required.
 #### Output
