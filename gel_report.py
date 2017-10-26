@@ -124,15 +124,15 @@ class connect():
 			# increase the count of patients searched
 			self.count += 1
 			# look for the desired proband id
-			if sample["proband"]==self.proband_id:
-				# if sample is blocked ignore
-				if sample["last_status"]=="blocked":
-					print "last status = blocked for proband "+str(self.proband_id)+"\nNo Report will be generated"
-					# may want to raise an exception here - however this includes a traceback which I don't want
-					#raise Exception("last status = blocked for proband "+str(self.proband_id))
-					#quit
-					quit()
-				else:
+
+			
+			# if sample is blocked ignore
+			if sample["last_status"]=="blocked":
+				pass
+			else:
+				# else look if it's our proband
+				if sample["proband"]==self.proband_id:
+				
 					# set flag to stop the search
 					found=True
 										
@@ -211,7 +211,7 @@ class connect():
 				self.read_API_page()
 			else:
 				# print statement to say not found
-				print "Record not found in the "+str(self.count) + " GeL records parsed"
+				print "Record not found in the "+str(self.count) + " GeL records parsed. (It may be blocked)"
 				# assert that the number of GEL record parsed == the sample count provided in the JSON
 				assert self.count == json['count'], "self.count != gel's count"
 		
