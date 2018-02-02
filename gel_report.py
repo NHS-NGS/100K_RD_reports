@@ -29,7 +29,7 @@ class connect():
 		self.token=APIAuthentication().get_token()
 	
 		# The link to the first page of the CIP API results
-		self.interpretationlist = "https://cipapi.genomicsengland.nhs.uk/api/2/interpretation-request?cip={cip}&status=sent_to_gmcs%2Creport_generated%2Creport_sent&members={proband}"
+		self.interpretationlist = "https://cipapi.genomicsengland.nhs.uk/api/2/interpretation-request?cip={cip}&status=sent_to_gmcs%2Creport_generated%2Creport_sent&members={proband}&format=json"
 		
 		# The probandID to return the report for
 		self.proband_id = ""
