@@ -106,7 +106,11 @@ class connect():
 			self.parse_json(json)
 	
 	def read_API_page(self):
-		'''This function returns all the cases that can be viewed by the user defined by the authentication token'''
+		'''
+		This function uses the authentication token to read the interpretation request list end point
+		This endpoint is filtered based on the CIP, status and the proband ID
+		The resulting json is returned
+		'''
 		# use requests module to return all the cases available to you
 		
 		# insert CIP and proband into url
@@ -121,10 +125,13 @@ class connect():
 		
 			
 	def parse_json(self,json):
-		'''This function takes the json file containing all cases. This is parsed to look for the desired proband id'''	
+		'''
+		This function takes the json file containing all cases whcih match the CIP, status and proband filter. 
+		A few checks are performed to ensure there is only one record before the record is parsed and the report is downloaded and modified
+		'''	
 		# loop through the results
 		if json['count'] == 0:
-			print "no record for proband %s with the status sent_to_gmcs,report_generated or report_sent"
+			print "no record for proband %s with the status sent_to_gmcs,report_generated or report_sent" % (self.proband_id)
 		elif json['count'] > 1:
 			print "STOP - multiple unblocked interpretation requests for desired CIP (%s) found for proband %s\nPlease inform GEL" % (config.CIP, self.proband_id)
 		else:
@@ -134,7 +141,7 @@ class connect():
 				
 				# variable to record the highest version of the report
 				highest_report_version = 0
-				# variable to record URL for the htnml report
+				# variable to record URL for the html report
 				highest_report_url = ""
 
 				# loop through each report in the clinical_reports section to get the highest report version
@@ -149,9 +156,9 @@ class connect():
 
 
 				# loop through each interpreted genome to find the highest cip_version
-				for j in range(len(sample["interpreted_genomes"])):
-					if int(sample["interpreted_genomes"][j]["cip_version"]) > self.max_cip_ver:
-						self.max_cip_ver = sample["interpreted_genomes"][j]["cip_version"]
+				for interpreted_genome in range(len(sample["interpreted_genomes"])):
+					if int(sample["interpreted_genomes"][interpreted_genome]["cip_version"]) > self.max_cip_ver:
+						self.max_cip_ver = sample["interpreted_genomes"][interpreted_genome]["cip_version"]
 				
 				#read the interpretation_request to pull out any variants
 				self.read_interpretation_request(sample)
