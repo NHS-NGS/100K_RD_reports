@@ -24,6 +24,10 @@ report_title = "100,000 Genomes Project Rare Disease Primary Findings"
 # warning message if there is an error reported when generating the report
 warning_message = "Warning! Error making the report.\nIf issue continues for this sample contact GEL Helpdesk @ ssd.servicedesk@nhs.net.\nError message = "
 
+########################### CIP information ##########################
+# which CIP is to be used. options are "omicia", "congenica" , "nextcode","genomics_england","illumina","exomiser"
+CIP = "omicia"
+
 ########################### pdfkit ##########################
 # path to the wkhtmltopdf executable
 wkhtmltopdf_path = "/home/mokaguys/Apps/wkhtmltox/bin/wkhtmltopdf"

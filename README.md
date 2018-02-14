@@ -7,7 +7,6 @@ The GEL html report is used, but modified depending on the result of the test.
 
 ## How it works
 As described below the following files and settings are required:
-
 - Files containing a username and password to authenticate with the CIP API
 - Settings in the config file changed as required 
 - A file containing the database connection credentials to be used by pyODBC
@@ -17,15 +16,17 @@ As described below the following files and settings are required:
 The script authentication.py creates an JSON web token (JWT) using the username and passwords provided in the files auth_pw.txt and auth_username.txt.
 
 Each file should just contain a single line containing only the username or password.
+
 #### Reading the API
-Using the Python requests module and the access token generated above the CIP-API interpretationrequestlist endpoint is read, returning all patients that your token allows you to access.
+Using the Python requests module and the access token generated above the CIP-API interpretationrequestlist endpoint is read, returning all records which have:
+* a status of sent_to_gmcs,report_generated or report_sent
+* proband ID = the proband ID specified (see usage)
+* CIP = the CIP specified in the config file
+
 #### Selecting which report to return
-Each Interpretation Request is assessed. However there may be multiple interpretation requests per proband. Additional interpretation requests may arise from the repetition of a sample which failed QC or use of multiple CIPs.
-**The current assumption is that there is only one unblocked Interpretation Request.**
-Once the Participant ID is found a few checks are performed to ensure the correct report is found.
-1. **If the patient status is blocked no report will be returned**
-2. Reports can be generated from multiple versions of the CIP version. **The report from the most recent version CIP version is taken**
-3. There can also be multiple reports generated for each version of the CIP. **The most recent report is taken.**
+There may be multiple interpretation requests per proband, however there should only be one interpretation request for the given CIP and status described above (an error is raised if this is False).
+There can be multiple versions of the report. **The most recent report is taken.**
+
 #### Checks and warnings
 In some cases the report contains an error warning that it cannot find coverage data, or annotation data. These issues are usually fleeting and may resolve themselves after a short time, however if this is not the case the GEL helpdesk should be contacted. The script can be stopped at this point if required.
 
